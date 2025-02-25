@@ -1,43 +1,39 @@
 pipeline {
     agent any
-    
+
     environment {
-        IMAGE_NAME = "my-web-server"
-        CONTAINER_NAME = "webserver"
-        DOCKER_PORT = "8001"  // Change if needed
+        DOCKER_IMAGE = "test-web-app"
+        DOCKER_CONTAINER = "Nginx-test-server"
+        SERVER_IP = "192.168.1.7:8002"
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/balbert103/personal-portfolio-.git'
+                git 'https://github.com/balbert103/personal-portfolio-'
+            }
+        }
+
+        stage('Build Project') {
+            steps {
+                sh 'npm install'  // Change to 'composer install' for PHP or 'pip install -r requirements.txt' for Python
+                sh 'npm run build' // Adjust for your build process
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh "docker build -t ${IMAGE_NAME} ."
-                }
+                sh "docker build -t ${DOCKER_IMAGE} ."
             }
         }
 
-        stage('Stop & Remove Old Container') {
+        stage('Deploy to Web Container') {
             steps {
-                script {
-                    sh """
-                    docker stop ${CONTAINER_NAME} || true
-                    docker rm ${CONTAINER_NAME} || true
-                    """
-                }
-            }
-        }
-
-        stage('Deploy New Container') {
-            steps {
-                script {
-                    sh "docker run -d -p ${DOCKER_PORT}:80 --name ${CONTAINER_NAME} ${IMAGE_NAME}"
-                }
+                sh """
+                docker stop ${DOCKER_CONTAINER} || true
+                docker rm ${DOCKER_CONTAINER} || true
+                docker run -d --name ${DOCKER_CONTAINER} --network web-testing-net -p 8080:80 ${DOCKER_IMAGE}
+                """
             }
         }
     }
